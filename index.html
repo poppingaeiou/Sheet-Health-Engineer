@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sheet Health Engineer Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 40px; height: 40px; border-radius: 50%; border-left-color: #0ea5e9; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <header class="bg-slate-800 text-white shadow-md py-6">
+        <div class="max-w-7xl mx-auto px-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-server text-3xl text-sky-400"></i>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-wide">Sheet Health <span class="text-sky-400">Engineer</span></h1>
+                    <p class="text-sm text-slate-400" id="docName">System Profiler & Bottleneck Analyzer</p>
+                </div>
+            </div>
+            <button onclick="fetchData()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-md transition text-sm font-medium shadow-sm flex items-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i> สแกนระบบใหม่
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        <div id="loadingState" class="bg-white rounded-xl shadow-sm p-12 text-center my-8">
+            <div class="spinner mb-4"></div>
+            <h3 class="text-lg font-semibold text-gray-700">กำลังเชื่อมต่อกับ Google API และวิเคราะห์โครงสร้าง...</h3>
+            <p class="text-gray-500 text-sm mt-2">อาจใช้เวลา 10-30 วินาที ขึ้นอยู่กับขนาดของฐานข้อมูล</p>
+        </div>
+
+        <div id="dashboardView" class="hidden">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-slate-700">
+                    <h4 class="text-slate-500 text-sm font-semibold mb-1">ชีตทั้งหมดในระบบ</h4>
+                    <p class="text-3xl font-bold text-slate-800" id="cardTotalSheets">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-red-500">
+                    <h4 class="text-slate-500 text-sm font-semibold mb-1">ชีตที่อยู่ในเกณฑ์วิกฤต (Critical)</h4>
+                    <p class="text-3xl font-bold text-red-600" id="cardCritical">0</p>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-sky-500">
+                    <h4 class="text-slate-500 text-sm font-semibold mb-1">รวมพื้นที่สูญเปล่าทั้งระบบ</h4>
+                    <p class="text-3xl font-bold text-sky-600" id="cardTotalWaste">0 <span class="text-sm font-normal text-slate-500">เซลล์</span></p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="bg-slate-50 border-b border-slate-200 px-6 py-4">
+                    <h2 class="text-lg font-bold text-slate-700"><i class="fa-solid fa-microchip mr-2 text-slate-500"></i>Resource Usage Breakdown</h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-white text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
+                                <th class="px-6 py-4 font-semibold">ชื่อชีตเป้าหมาย</th>
+                                <th class="px-6 py-4 font-semibold text-right">จำนวนสูตร (Formulas)</th>
+                                <th class="px-6 py-4 font-semibold text-right">จองพื้นที่รวม</th>
+                                <th class="px-6 py-4 font-semibold text-right">พื้นที่ใช้งานจริง</th>
+                                <th class="px-6 py-4 font-semibold text-right">พื้นที่ขยะ (Unused)</th>
+                                <th class="px-6 py-4 font-semibold text-center">Health Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody" class="divide-y divide-slate-100 text-sm">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // ใช้ API URL เดิมที่คุณ Deploy ไว้
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyDiC-9K0sE1l9ijS8wJR-wLsJyKt8hKSK0N8GOB4Go4sv0hQrOOjvXW6JQKc3M-MgYGg/exec';
+
+        function fetchData() {
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('dashboardView').classList.add('hidden');
+
+            fetch(API_URL)
+                .then(response => response.json())
+                .then(result => {
+                    document.getElementById('loadingState').classList.add('hidden');
+                    
+                    if(result.status === 'success') {
+                        document.getElementById('dashboardView').classList.remove('hidden');
+                        document.getElementById('docName').innerText = `Document: ${result.documentName}`;
+                        
+                        let totalWaste = 0;
+                        let criticalCount = 0;
+                        const tbody = document.getElementById('tableBody');
+                        tbody.innerHTML = ''; // Clear old data
+                        
+                        result.data.forEach(sheet => {
+                            totalWaste += sheet.unusedCells;
+                            if(sheet.statusCode === 2) criticalCount++;
+
+                            // จัดเตรียม Badge ตามสถานะความสมบูรณ์
+                            let badgeHTML = '';
+                            let rowBg = '';
+                            if (sheet.statusCode === 2) {
+                                badgeHTML = '<span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold border border-red-200"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Critical</span>';
+                                rowBg = 'bg-red-50/30';
+                            } else if (sheet.statusCode === 1) {
+                                badgeHTML = '<span class="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-200"><i class="fa-solid fa-circle-exclamation mr-1"></i> Warning</span>';
+                            } else {
+                                badgeHTML = '<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200"><i class="fa-solid fa-check mr-1"></i> Healthy</span>';
+                            }
+
+                            // จัดการแสดงผลสูตร
+                            let formulaDisplay = sheet.formulaCount.toLocaleString();
+                            if (sheet.hasFormulaWarning) {
+                                formulaDisplay = `<span class="text-amber-500 font-semibold text-xs" title="ข้อมูลใหญ่เกินไป อาจทำให้ประมวลผลล้มเหลว"><i class="fa-solid fa-ban"></i> Too Large</span>`;
+                            } else if (sheet.formulaCount > 10000) {
+                                formulaDisplay = `<span class="text-red-600 font-bold">${sheet.formulaCount.toLocaleString()}</span>`;
+                            }
+
+                            // ความหนาแน่นของขยะ
+                            let wasteClass = sheet.unusedPercentage > 50 ? 'text-red-600 font-bold' : 'text-slate-600';
+
+                            let tr = document.createElement('tr');
+                            tr.className = `hover:bg-slate-50 transition-colors ${rowBg}`;
+                            tr.innerHTML = `
+                                <td class="px-6 py-4 whitespace-nowrap font-medium text-slate-800"><i class="fa-solid fa-table border-slate-300 text-slate-400 mr-2"></i>${sheet.sheetName}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right font-mono">${formulaDisplay}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-slate-500">${sheet.totalAllocated.toLocaleString()}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-slate-500">${sheet.totalUsed.toLocaleString()}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right ${wasteClass}">${sheet.unusedCells.toLocaleString()} <span class="text-xs text-slate-400 ml-1">(${sheet.unusedPercentage}%)</span></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">${badgeHTML}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+
+                        // อัปเดต Summary Cards
+                        document.getElementById('cardTotalSheets').innerText = result.data.length;
+                        document.getElementById('cardCritical').innerText = criticalCount;
+                        document.getElementById('cardTotalWaste').innerHTML = `${totalWaste.toLocaleString()} <span class="text-sm font-normal text-slate-500">เซลล์</span>`;
+
+                    } else {
+                        alert('เกิดข้อผิดพลาดในการดึงข้อมูลจาก Server:\n' + result.message);
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('loadingState').innerHTML = `<div class="text-red-500"><i class="fa-solid fa-circle-xmark text-4xl mb-3"></i><p>ไม่สามารถเชื่อมต่อระบบได้ ตรวจสอบ URL ของ API</p></div>`;
+                    console.error('Error:', error);
+                });
+        }
+
+        // โหลดข้อมูลอัตโนมัติเมื่อเปิดหน้าเว็บ
+        window.onload = fetchData;
+    </script>
+</body>
+</html>
