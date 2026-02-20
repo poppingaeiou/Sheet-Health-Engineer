@@ -34,7 +34,7 @@
         <div id="loadingState" class="bg-white rounded-xl shadow-sm p-12 text-center my-8">
             <div class="spinner mb-4"></div>
             <h3 class="text-lg font-semibold text-gray-700">กำลังเชื่อมต่อกับ Google API และวิเคราะห์โครงสร้าง...</h3>
-            <p class="text-gray-500 text-sm mt-2">อาจใช้เวลา 10-30 วินาที ขึ้นอยู่กับขนาดของฐานข้อมูล</p>
+            <p class="text-gray-500 text-sm mt-2">โปรดรอสักครู่ (อาจใช้เวลา 10-30 วินาที ขึ้นอยู่กับขนาดข้อมูล)</p>
         </div>
 
         <div id="dashboardView" class="hidden">
@@ -63,7 +63,7 @@
                         <thead>
                             <tr class="bg-white text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
                                 <th class="px-6 py-4 font-semibold">ชื่อชีตเป้าหมาย</th>
-                                <th class="px-6 py-4 font-semibold text-right">จำนวนสูตร (Formulas)</th>
+                                <th class="px-6 py-4 font-semibold text-right">จำนวนสูตร</th>
                                 <th class="px-6 py-4 font-semibold text-right">จองพื้นที่รวม</th>
                                 <th class="px-6 py-4 font-semibold text-right">พื้นที่ใช้งานจริง</th>
                                 <th class="px-6 py-4 font-semibold text-right">พื้นที่ขยะ (Unused)</th>
@@ -79,7 +79,7 @@
     </main>
 
     <script>
-        // ใช้ API URL เดิมที่คุณ Deploy ไว้
+        // API URL ของคุณ
         const API_URL = 'https://script.google.com/macros/s/AKfycbyDiC-9K0sE1l9ijS8wJR-wLsJyKt8hKSK0N8GOB4Go4sv0hQrOOjvXW6JQKc3M-MgYGg/exec';
 
         function fetchData() {
@@ -98,13 +98,13 @@
                         let totalWaste = 0;
                         let criticalCount = 0;
                         const tbody = document.getElementById('tableBody');
-                        tbody.innerHTML = ''; // Clear old data
+                        tbody.innerHTML = ''; 
                         
                         result.data.forEach(sheet => {
                             totalWaste += sheet.unusedCells;
                             if(sheet.statusCode === 2) criticalCount++;
 
-                            // จัดเตรียม Badge ตามสถานะความสมบูรณ์
+                            // จัดการ Badge สีสถานะ
                             let badgeHTML = '';
                             let rowBg = '';
                             if (sheet.statusCode === 2) {
@@ -116,15 +116,18 @@
                                 badgeHTML = '<span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-200"><i class="fa-solid fa-check mr-1"></i> Healthy</span>';
                             }
 
-                            // จัดการแสดงผลสูตร
-                            let formulaDisplay = sheet.formulaCount.toLocaleString();
+                            // จัดการตัวเลขสูตร
+                            let formulaDisplay = '';
                             if (sheet.hasFormulaWarning) {
-                                formulaDisplay = `<span class="text-amber-500 font-semibold text-xs" title="ข้อมูลใหญ่เกินไป อาจทำให้ประมวลผลล้มเหลว"><i class="fa-solid fa-ban"></i> Too Large</span>`;
-                            } else if (sheet.formulaCount > 10000) {
-                                formulaDisplay = `<span class="text-red-600 font-bold">${sheet.formulaCount.toLocaleString()}</span>`;
+                                formulaDisplay = `<span class="text-amber-500 font-semibold text-xs"><i class="fa-solid fa-ban"></i> ข้อมูลใหญ่เกินสแกน</span>`;
+                            } else {
+                                formulaDisplay = sheet.formulaCount.toLocaleString();
+                                if (sheet.formulaCount > 10000) {
+                                    formulaDisplay = `<span class="text-red-600 font-bold">${formulaDisplay}</span>`;
+                                }
                             }
 
-                            // ความหนาแน่นของขยะ
+                            // จัดการสีตัวเลขขยะ
                             let wasteClass = sheet.unusedPercentage > 50 ? 'text-red-600 font-bold' : 'text-slate-600';
 
                             let tr = document.createElement('tr');
@@ -140,22 +143,24 @@
                             tbody.appendChild(tr);
                         });
 
-                        // อัปเดต Summary Cards
+                        // อัปเดตตัวเลขการ์ดสรุปผล
                         document.getElementById('cardTotalSheets').innerText = result.data.length;
                         document.getElementById('cardCritical').innerText = criticalCount;
                         document.getElementById('cardTotalWaste').innerHTML = `${totalWaste.toLocaleString()} <span class="text-sm font-normal text-slate-500">เซลล์</span>`;
 
                     } else {
-                        alert('เกิดข้อผิดพลาดในการดึงข้อมูลจาก Server:\n' + result.message);
+                        document.getElementById('loadingState').classList.remove('hidden');
+                        document.getElementById('loadingState').innerHTML = `<div class="text-red-500"><i class="fa-solid fa-triangle-exclamation text-4xl mb-3"></i><p class="font-bold">เกิดข้อผิดพลาดจากฝั่ง Google Apps Script:</p><p class="text-sm mt-2">${result.message}</p></div>`;
                     }
                 })
                 .catch(error => {
-                    document.getElementById('loadingState').innerHTML = `<div class="text-red-500"><i class="fa-solid fa-circle-xmark text-4xl mb-3"></i><p>ไม่สามารถเชื่อมต่อระบบได้ ตรวจสอบ URL ของ API</p></div>`;
-                    console.error('Error:', error);
+                    document.getElementById('loadingState').classList.remove('hidden');
+                    document.getElementById('loadingState').innerHTML = `<div class="text-red-500"><i class="fa-solid fa-circle-xmark text-4xl mb-3"></i><p class="font-bold">ไม่สามารถเชื่อมต่อ API ได้ (ติด CORS หรือ URL ผิด)</p><p class="text-sm mt-2 text-gray-500">โปรดตรวจสอบให้แน่ใจว่า Deploy API เป็น "New version" และตั้งค่าเป็น "Anyone" แล้ว</p></div>`;
+                    console.error('Fetch Error:', error);
                 });
         }
 
-        // โหลดข้อมูลอัตโนมัติเมื่อเปิดหน้าเว็บ
+        // สั่งทำงานทันทีเมื่อเปิดหน้าเว็บ
         window.onload = fetchData;
     </script>
 </body>
